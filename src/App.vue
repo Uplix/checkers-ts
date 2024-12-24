@@ -8,6 +8,9 @@
   const doubleJump = ref(false)
 
   // 'r' for red, 'b' for black, 'e' for empty
+  // 'R' for red king, 'B' for black king
+  
+  // initializes the board
   const getBoard = ()=>{
     var theBoard = [];
 
@@ -18,11 +21,14 @@
           piece: { type: "e", display: null, id: null },
           color: i % 2 === j % 2 ? "r" : "b",
         }
+        // adds the black pieces
         if(i < 3 && ((i%2 == 0 && j%2 == 1) || (i%2 == 1 && j%2 == 0))){
           block.piece.type = "b";
           block.piece.display = Piece;
           block.piece.id = `${i} ${j}`;
-        }else if(i > 4 && ((i%2 == 0 && j%2 == 1) || (i%2 == 1 && j%2 == 0))){
+        }
+        // adds the red pieces
+        else if(i > 4 && ((i%2 == 0 && j%2 == 1) || (i%2 == 1 && j%2 == 0))){
           block.piece.type = "r";
           block.piece.display = Piece;
           block.piece.id = `${i} ${j}`;
@@ -40,8 +46,9 @@
   let draggedPiece = ref(null);
   let sourcePosition = ref(null);
 
+  // initializes piece dragging
   function handleDragStart(event, row, column) {
-    // event.preventDefault();
+    // if a double jump possibility exists, check if the double jump piece is being dragged. (if it's not, cancel and switch to next turn)
     if(doubleJump.value){
       draggedPiece.value = board[row][column].piece;
       sourcePosition.value = { row, column };
@@ -53,6 +60,7 @@
       }
     }else{
       unselect()
+      // make sure the correct piece is being dragged for the turn
       if((board[row][column].piece.type.toLowerCase() == "b" && turn.value) || (board[row][column].piece.type.toLowerCase() == "r" && !turn.value)){
         draggedPiece.value = board[row][column].piece;
         sourcePosition.value = { row, column };
@@ -74,11 +82,13 @@
     event.preventDefault();
   }
 
+  // handles the dropping of the piece
   function handleDrop(row, column) {
     if (!draggedPiece.value) return;
 
     const validLocations = findValidLocations(sourcePosition.value.row, sourcePosition.value.column);
     const isValidMove = validLocations.some((loc) => loc.row === row && loc.column === column);
+    // if a double jump possibility exists, check if the piece is being dropped at the possible double jump location
     if(doubleJump.value){
       if(isValidMove){
         board[sourcePosition.value.row][sourcePosition.value.column].piece = { type: "e", display: null, id: null };
@@ -93,11 +103,14 @@
         turn.value = !turn.value
         doubleJump = !doubleJump
       }
-    }else if(isValidMove) {
+    }
+    // if the piece is being dropped at a valid location (not a double jump instance)
+    else if(isValidMove) {
       board[sourcePosition.value.row][sourcePosition.value.column].piece = { type: "e", display: null, id: null };
       board[row][column].piece = draggedPiece.value;
       checkKing(row, column)
 
+      // check if a piece was skipped in the turn and now needs to be removed
       if(Math.abs(sourcePosition.value.row - row) == 2){
         board[row - ((row - sourcePosition.value.row)/2)][column - ((column - sourcePosition.value.column)/2)].piece = { type: "e", display: null, id: null}
         unselect();
@@ -109,6 +122,7 @@
             doubleLocations.push(location)
           }
         }
+        // check if a double jump is possible (if it is keep the turn and activate double jump, if not switch turns)
         if(doubleLocations.length > 0){
           doubleJump.value = true
           highlightedPieces.value.push({row:row,column:column})
@@ -131,16 +145,20 @@
     sourcePosition.value = null;
   }
 
+  // finds the valid locations for a piece to move to (including double jump possibilities)
   function findValidLocations(row, column){
     let validLocations = []
+    // this is for pieces moving down the board
     if(board[row][column].piece.type.toLowerCase() == "b" || board[row][column].piece.type == "R"){
       if(row + 1 < board.length){
+        // down and left
         if(column - 1 >= 0){
           if(board[row + 1][column - 1].piece.type == "e"){
             validLocations.push({
               row: row+1,
               column: column - 1
             })
+            // check if a piece can be skipped down and left
           }else if(row + 2 < board.length && column - 2 >= 0 && ((board[row][column].piece.type.toLowerCase() == "b" && board[row + 1][column - 1].piece.type.toLowerCase() == "r") || (board[row][column].piece.type.toLowerCase() == "r" && board[row+1][column-1].piece.type.toLowerCase() == "b")) && board[row + 2][column - 2].piece.type == "e"){
             validLocations.push({
               row:row+2,
@@ -148,12 +166,14 @@
             })
           }
         }
+        // down and right
         if(column + 1 < board.length){
           if(board[row+1][column + 1].piece.type == "e"){
             validLocations.push({
               row: row+1,
               column:column+1
             })
+            // check if a piece can be skipped down and right
           }else if(row + 2 < board.length && column + 2 < board.length &&((board[row][column].piece.type.toLowerCase() == "r" && board[row + 1][column + 1].piece.type.toLowerCase() == "b") || (board[row][column].piece.type.toLowerCase() == "b" && board[row+1][column+1].piece.type.toLowerCase() == "r")) && board[row + 2][column + 2].piece.type == "e"){
             validLocations.push({
               row:row+2,
@@ -163,14 +183,17 @@
         }
       }
     } 
+    // this is for pieces moving up the board
     if(board[row][column].piece.type.toLowerCase() == "r" ||  board[row][column].piece.type == "B"){
       if(row - 1 >= 0){
+        // up and left
         if(column - 1 >= 0){
           if(board[row - 1][column - 1].piece.type == "e"){
             validLocations.push({
               row: row-1,
               column: column - 1
             })
+            // check if a piece can be skipped up and left
           }else if(row - 2 >= 0 && column - 2 >= 0 && ((board[row][column].piece.type.toLowerCase() == "r" && board[row - 1][column - 1].piece.type.toLowerCase() == "b") || (board[row][column].piece.type.toLowerCase() == "b" && board[row-1][column-1].piece.type.toLowerCase() == "r")) && board[row - 2][column - 2].piece.type == "e"){
             validLocations.push({
               row:row-2,
@@ -178,12 +201,14 @@
             })
           }
         }
+        // up and right
         if(column + 1 < board.length){
           if(board[row-1][column + 1].piece.type == "e"){
             validLocations.push({
               row: row-1,
               column:column+1
             })
+            // check if a piece can be skipped up and right
           }else if(row - 2 >= 0 && column + 2 < board.length && ((board[row][column].piece.type.toLowerCase() == "r" && board[row - 1][column + 1].piece.type.toLowerCase() == "b") || (board[row][column].piece.type.toLowerCase() == "b" && board[row-1][column+1].piece.type.toLowerCase() == "r")) && board[row - 2][column + 2].piece.type == "e"){
             validLocations.push({
               row:row-2,
@@ -196,6 +221,7 @@
     return validLocations;
   }
 
+  // unselects all highlighted pieces (highlighted pieces are tracked through the highlightedPieces array)
   function unselect(){
     for(const pieceLocation of highlightedPieces.value){
       if('highlight' in board[pieceLocation.row][pieceLocation.column]) delete board[pieceLocation.row][pieceLocation.column].highlight
@@ -204,7 +230,9 @@
     highlightedPieces.value = [];
   }
 
+  // handles the clicking of a spot on the board
   function clickSpot(row, column){
+    // if a double jump possibility exists, check if the possible double jump location is being clicked
     if(doubleJump.value){
       if(board[row][column].highlight){
         let pieceHolder = board[highlightedPieces.value[0].row][highlightedPieces.value[0].column].piece
@@ -220,12 +248,14 @@
         turn.value = !turn.value
         doubleJump.value = false
       }
-    }else if(board[row][column].highlight){
+    }
+    // if a double jump possibility does not exist and a possible move is being clicked
+    else if(board[row][column].highlight){
       let pieceHolder = board[highlightedPieces.value[0].row][highlightedPieces.value[0].column].piece
       board[highlightedPieces.value[0].row][highlightedPieces.value[0].column].piece = { type: "e", display: null, id: null}
       board[row][column].piece = pieceHolder
       checkKing(row, column)
-
+      // check if a piece was skipped in the turn and now needs to be removed
       if(Math.abs(highlightedPieces.value[0].row - row) == 2){
         board[row - ((row - highlightedPieces.value[0].row)/2)][column - ((column - highlightedPieces.value[0].column)/2)].piece = { type: "e", display: null, id: null}
         unselect();
@@ -237,6 +267,7 @@
             doubleLocations.push(location)
           }
         }
+        // check if a double jump is possible (if it is keep the turn and activate double jump, if not switch turns)
         if(doubleLocations.length > 0){
           doubleJump.value = true
           highlightedPieces.value.push({row:row,column:column})
@@ -252,7 +283,9 @@
         turn.value = !turn.value
         unselect();
       }
-    }else{
+    }
+    // if a non possible move is being clicked, check if the spot being clicked has a piece that matches the turn
+    else{
       unselect()
       if((board[row][column].piece.type.toLowerCase() == "b" && turn.value) || (board[row][column].piece.type.toLowerCase() == "r" && !turn.value)){
         highlightedPieces.value.push({row:row,column:column})
@@ -267,6 +300,7 @@
     }
   }
 
+  // checks if a piece has reached the end of the board and needs to be kinged
   function checkKing(row, column){
     if(row == board.length - 1 || row == 0){
       board[row][column].piece.type = board[row][column].piece.type.toUpperCase();
